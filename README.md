@@ -1,5 +1,4 @@
 # ProcessingMineSweeper
-VDM Scrapper
 ========================
 
 ProcessingMineSweeper is a classic javascript mine sweeper.
