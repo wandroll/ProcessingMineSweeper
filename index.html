@@ -1,0 +1,193 @@
+<html>
+<head>
+<script src="bower_components/Processing.js/processing.js"></script>
+<script src="bower_components/underscore/underscore.js"></script>
+</head>
+<body onload="init();">
+  <h1>Processing.js Minesweeper</a></h1>
+  <h2>Advanced processing.js via JavaScript</h2>
+  <p>a minesweeper built with processing</p>
+  <em>Note: runs via a web server or requres local files access in the web browser settings.</em>
+  Converted to the JavaScript language from the Processing code<br/>
+  <p>by Wandrille Verlut.</p>
+
+  <canvas id="canvas1" width="200" height="200"></canvas>
+
+<script id="script1" type="text/javascript">
+function init() {
+  var canvas = document.getElementById("canvas1");
+  script = document.getElementById("script1").text;
+  var p = new Processing(canvas, sketchProc); 
+}
+
+function sketchProc(processing){
+
+  // @pjs preload must be used to preload the image
+  /*@pjs preload="img/unclicked.png,";*/
+  /*@pjs preload="img/clickednone.png";*/
+  /*@pjs preload="img/clickedone.png";*/
+  /*@pjs preload="img/clickedtwo.png";*/
+  /*@pjs preload="img/clickedthree.png";*/
+  /*@pjs preload="img/clickedfour.png";*/
+  /*@pjs preload="img/clickedfive.png";*/
+  /*@pjs preload="img/clickedsix.jpeg";*/
+  /*@pjs preload="img/clickedseven.jpeg";*/
+  /*@pjs preload="img/clickedeight.jpeg";*/
+  /*@pjs preload="img/flaggued.png";*/
+
+
+  imgFlaggued = processing.loadImage("img/flaggued.png");
+  imgUnclicked = processing.loadImage("img/unclicked.png");
+  var imgClicked = new Array();
+  imgClicked[0] = processing.loadImage("img/clickednone.png");
+  imgClicked[1] = processing.loadImage("img/clickedone.png");
+  imgClicked[2] = processing.loadImage("img/clickedtwo.png");
+  imgClicked[3] = processing.loadImage("img/clickedthree.png");
+  imgClicked[4] = processing.loadImage("img/clickedfour.png");
+  imgClicked[5] = processing.loadImage("img/clickedfive.png");
+  imgClicked[6] = processing.loadImage("img/clickedsix.jpeg");
+  imgClicked[7] = processing.loadImage("img/clickedseven.jpeg");
+  imgClicked[8] = processing.loadImage("img/clickedeight.jpeg");
+
+  var fieldSize = 35; // size is in pixels
+  var pgameSize = 10; //size of the board 
+  var minesCount = 12;
+  var gameState = "start"; // state variable can be : "start" or "ingame" or "lost" 
+  var board = new boardGame(pgameSize);
+
+  processing.setup = function() {
+    processing.size(500, 500); //dimension of the display window
+    processing.frameRate(15); 
+    processing.noStroke();
+    processing.smooth();
+  }
+
+  processing.draw = function() {
+    processing.background(124);
+    displayMineField(board);
+  }
+
+  /********* gestion des listeners ********/
+  processing.mousePressed = function() {
+    var currI = Math.floor(processing.mouseX / fieldSize);
+    var currJ = Math.floor(processing.mouseY / fieldSize);
+    if (processing.mouseButton == 37) { //right click
+      if (gameState =="start") { 
+        board = new game(pgameSize, minesCount, currI, currJ);
+        gameState ="ingame";
+      }
+      reveal (board, currI, currJ);
+    }
+    else if (processing.mouseButton == 39) { //left click
+      switchFlag(board, currI, currJ);
+    }
+  }
+
+
+  function displayMineField(fieldArray){
+    for (var i=0; i<pgameSize; i++){
+      for (var j=0; j<pgameSize; j++){
+        if (fieldArray[i][j].isClicked){
+          var adjacentMinesCount = fieldArray[i][j].adjacentMinesCount;
+          processing.image(imgClicked[adjacentMinesCount], fieldSize*i, fieldSize*j, fieldSize, fieldSize);
+        }
+        else if (fieldArray[i][j].isFlaggued) {
+          processing.image(imgFlaggued, fieldSize*i, fieldSize*j, fieldSize, fieldSize);
+        }
+        else {
+          processing.image(imgUnclicked, fieldSize*i, fieldSize*j, fieldSize, fieldSize);
+        }
+      }
+    }
+  }
+
+
+  function game(gameSize, minesCount, startI, startJ){
+    var fieldArray = new boardGame(gameSize);      
+    var minelist = new dispatchMines(gameSize, minesCount, startI, startJ);
+    for (k=0; k<minesCount; k++){
+      var x = minelist[k].x;
+      var y = minelist[k].y;
+      fieldArray[x][y].isMined = true;
+      if(x>0 && y>0) fieldArray[x-1][y-1].adjacentMinesCount ++;
+      if(x>0) fieldArray[x-1][y].adjacentMinesCount ++;
+      if(x>0 && y<gameSize-1) fieldArray[x-1][y+1].adjacentMinesCount ++;
+      if(x<gameSize-1 && y>0) fieldArray[x+1][y-1].adjacentMinesCount ++;
+      if(x<gameSize-1) fieldArray[x+1][y].adjacentMinesCount ++;
+      if(x<gameSize-1 && y<gameSize-1) fieldArray[x+1][y+1].adjacentMinesCount ++;
+      if(y>0)fieldArray[x][y-1].adjacentMinesCount ++;
+      if(y<gameSize-1) fieldArray[x][y+1].adjacentMinesCount ++;
+    }
+    return fieldArray;   
+  }
+
+  function reveal (fieldArray, i, j){
+    if ((!fieldArray[i][j].isFlaggued)&&(!fieldArray[i][j].isClicked)){
+      if (fieldArray[i][j].isMined){    
+        gameState = "lost";
+        console.log("perdu");
+      }
+      else {
+        fieldArray[i][j].isClicked = true;
+        if (fieldArray[i][j].adjacentMinesCount == 0) {
+          if(i>0 && j>0) {
+            reveal(fieldArray, i-1, j-1);
+          }
+          if(i>0) {
+            reveal(fieldArray, i-1, j);
+          }
+          if((i>0) && (j<pgameSize-1)) {
+            reveal(fieldArray, i -1, j+1 );
+          }
+          if((i< pgameSize-1) && (j>0)) {
+            reveal(fieldArray, i+1, j-1);
+          }
+          if(i<pgameSize-1) reveal(fieldArray, i+1, j);
+          if((i<pgameSize-1) && (j<pgameSize-1)) reveal(fieldArray, i+1, j+1);
+          if(j>0) reveal(fieldArray, i, j-1 );
+          if(j<pgameSize-1) reveal(fieldArray, i, j+1);
+        }
+      }
+    } 
+  }
+
+  //flag or unflag a field
+  function switchFlag(fieldArray, i, j) {
+    //
+    fieldArray[i][j].isFlaggued = !fieldArray[i][j].isFlaggued;
+  }
+
+  //return an array of pointers where mineShouldBe
+  function dispatchMines (gameSize, nbMines, startI, startJ ){
+    var fieldList =new Array();
+    for (var i=0 ; i<gameSize; i++) {
+      for (var j=0; j<gameSize; j++) {
+        if ((i!=startI)&&(j!=startJ)){
+          fieldList.push({x:i, y:j});
+        }
+      }
+    }
+    return _.sample(fieldList, nbMines);
+  }
+
+  function field () {
+    this.adjacentMinesCount = 0; 
+    this.isMined = false;//!!Math.floor(Math.random() * 2);
+    this.isClicked = false;
+    this.isFlaggued = false;
+  }
+
+  function boardGame(gameSize){
+    var fieldArray = new Array();      
+    for (var i=0; i<gameSize; i++){
+      fieldArray[i] = new Array(); 
+      for (var j=0; j<gameSize; j++){
+        fieldArray[i].push(new field());
+      }
+    }
+    return fieldArray;
+  }
+}
+</script>
+</body>
+</html>

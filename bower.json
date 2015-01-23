@@ -1,0 +1,27 @@
+{
+  "name": "ProcessingMinesweeper",
+  "version": "0.0.0",
+  "authors": [
+    "Wandri"
+  ],
+  "description": "classic minesweeper built using processing js",
+  "main": "index.html",
+  "keywords": [
+    "minesweeper",
+    "processing",
+    "javascript"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/wandroll",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "Processing.js": "~1.4.9",
+    "underscore": "~1.7.0"
+  }
+}
