@@ -31,7 +31,16 @@ function init() {
 function sketchProc(processing){
 
   // @pjs preload must be used to preload the image
+
+  /*@pjs preload="img/flaggued.png";*/
+  /*@pjs preload="img/flagguedunmined.png";*/
+  /*@pjs preload="img/minedclicked.png";*/
+  /*@pjs preload="img/minedunclicked.png";*/
   /*@pjs preload="img/unclicked.png,";*/
+  /*@pjs preload="img/newgamebutton.png";*/
+  /*@pjs preload="img/gamelostbutton.png";*/
+  /*@pjs preload="img/gamewonbutton.png";*/
+  /*@pjs preload="img/frame2.png";*/
   /*@pjs preload="img/clickednone.png";*/
   /*@pjs preload="img/clickedone.png";*/
   /*@pjs preload="img/clickedtwo.png";*/
@@ -41,15 +50,18 @@ function sketchProc(processing){
   /*@pjs preload="img/clickedsix.jpeg";*/
   /*@pjs preload="img/clickedseven.jpeg";*/
   /*@pjs preload="img/clickedeight.jpeg";*/
-  /*@pjs preload="img/flaggued.png";*/
-  /*@pjs preload="img/newgamebutton.png";*/
-  /*@pjs preload="img/frame2.png";*/
-
   /* @pjs font=TickingTimebombBB.ttf */
 
   var imgFlaggued = processing.loadImage("img/flaggued.png"),
+      imgFlaggueddUnmined = processing.loadImage("img/flagguedunmined.png"),
+      imgMinedClicked = processing.loadImage("img/minedclicked.png"),
+      imgMinedUnclicked = processing.loadImage("img/minedunclicked.png"),
+
       imgUnclicked = processing.loadImage("img/unclicked.png"),
       imgNewGameButton = processing.loadImage("img/newgamebutton.png"),
+      imgGameLostButton = processing.loadImage("img/gamelostbutton.png"),
+      imgGameWonButton = processing.loadImage("img/gamewonbutton.png"),
+
       imgFrame = processing.loadImage("img/frame2.png");
 
   var imgClicked = new Array();
@@ -69,13 +81,13 @@ function sketchProc(processing){
       frameSizeY = 573;
   var fieldSize = 30; // size is in pixels
   var pgameSize = 16; //size of the board 
-  var minesCount = 12;
+  var minesCount = 2;
 
   var gameState = "start"; // state variable can be : "start" or "ingame" or "lost" 
   var board = new boardGame(pgameSize);
 
   var unclickedFieldCount = 0;
-  var remainingMines = 0;
+  var remainingMines = minesCount;
 
   processing.setup = function() {
     processing.size(frameSizeX, frameSizeY); //dimension of the display window
@@ -89,35 +101,59 @@ function sketchProc(processing){
 
   processing.draw = function() {
     processing.background(200);
-    displayFrame();
+    displayFrame(frameSizeX, frameSizeY);
     displayMineField(board);
     displayTimer(30, 46);
     displayMinesCount(450, 46);
+    displayGameButton (240, 20)
   }
 
   /********* gestion des listeners ********/
   processing.mousePressed = function() {
-    var currI = Math.floor((processing.mouseX -offsetX)/ fieldSize);
-    var currJ = Math.floor((processing.mouseY -offsetY)/ fieldSize);
-    if (processing.mouseButton == 37) { //right click
-
-      if (gameState =="start") {
-        timedCount();
-        board = new game(pgameSize, minesCount, currI, currJ);
-        gameState ="ingame";
-      }
-      reveal (board, currI, currJ);
+    var mouseX= processing.mouseX,
+        mouseY = processing.mouseY;
+    if ((mouseX<240+30)&&(mouseX>240)&&(mouseY<20+30)&&(mouseY>20)){
+      gameState ="start";
+      board = new game(pgameSize, minesCount, currI, currJ);
     }
-    else if (processing.mouseButton == 39) { //left click
-      switchFlag(board, currI, currJ);
+    else if ((mouseX<frameSizeX-offsetX)&&(mouseX>offsetX)&&(mouseY<frameSizeX-offsetY)&&(mouseY>offsetY)){
+      var currI = Math.floor((processing.mouseX -offsetX)/ fieldSize);
+      var currJ = Math.floor((processing.mouseY -offsetY)/ fieldSize);
+      
+      if (processing.mouseButton == 37) { //right click
+        if (gameState =="start") {
+          timedCount();
+          board = new game(pgameSize, minesCount, currI, currJ);
+          gameState ="ingame";
+        }
+        reveal (board, currI, currJ);
+      }
+      else if (processing.mouseButton == 39) { //left click
+        switchFlag(board, currI, currJ);
+      }
     }
   }
 
   function displayTimer (posX, posY){
     processing.text(secon, posX, posY);
   }
-    function displayFrame (){
-    processing.image(imgFrame, 0, 0, frameSizeX, frameSizeY);
+
+  function displayGameButton (posX, posY){
+    switch (gameState){
+    case "lost":
+      processing.image(imgGameLostButton, posX, posY, 30, 30);
+    break;
+    case "won":
+      processing.image(imgGameWonButton, posX, posY, 30, 30);
+    break;
+    default:
+        processing.image(imgNewGameButton, posX, posY, 30, 30);
+    break;
+    }
+  }
+
+  function displayFrame (sizeX, sizeY){
+    processing.image(imgFrame, 0, 0, sizeX, sizeY);
   }
 
   function displayMinesCount (posX, posY){
@@ -125,25 +161,74 @@ function sketchProc(processing){
   }
 
   function displayMineField(fieldArray){
-    for (var i=0; i<pgameSize; i++){
-      for (var j=0; j<pgameSize; j++){
-        if (fieldArray[i][j].isClicked){
-          var adjacentMinesCount = fieldArray[i][j].adjacentMinesCount;
-          processing.image(imgClicked[adjacentMinesCount], fieldSize*i+offsetX, fieldSize*j+offsetY, fieldSize, fieldSize);
+    switch (gameState){
+      case "lost":
+        for (var i=0; i<pgameSize; i++){
+          for (var j=0; j<pgameSize; j++){
+            currentField = fieldArray[i][j];
+            if (currentField.isClicked){
+              if (currentField.isMined){ //cliqué et mine
+                processing.image(imgMinedClicked, fieldSize*i+offsetX, fieldSize*j+ offsetY, fieldSize, fieldSize);
+              }
+              else { //cliqué non miné
+                var adjacentMinesCount = fieldArray[i][j].adjacentMinesCount;
+                processing.image(imgClicked[adjacentMinesCount], fieldSize*i+offsetX, fieldSize*j+offsetY, fieldSize, fieldSize);
+              }
+            } else{
+              if (currentField.isMined){
+                if (currentField.isFlaggued){ //cas flaggué ET MINE
+                  processing.image(imgFlaggued, fieldSize*i+offsetX, fieldSize*j+ offsetY, fieldSize, fieldSize);
+                }
+                else{ //cas non flaggué ET MINE
+                  processing.image(imgMinedUnclicked, fieldSize*i+offsetX, fieldSize*j+ offsetY, fieldSize, fieldSize);
+                }
+              } else{ 
+                if (currentField.isFlaggued){ //cas non mine et flagué
+                  processing.image(imgFlaggueddUnmined, fieldSize*i+offsetX, fieldSize*j+ offsetY, fieldSize, fieldSize);
+                }
+                else{ //cas non mine non flague non cliqué
+                    processing.image(imgUnclicked, fieldSize*i+offsetX, fieldSize*j+offsetY, fieldSize, fieldSize);
+                }
+              }
+            }
+          }
         }
-        else if (fieldArray[i][j].isFlaggued) {
-          processing.image(imgFlaggued, fieldSize*i+offsetX, fieldSize*j+ offsetY, fieldSize, fieldSize);
+      break;
+      case "won":
+        for (var i=0; i<pgameSize; i++){
+          for (var j=0; j<pgameSize; j++){
+            if (fieldArray[i][j].isClicked){
+              var adjacentMinesCount = fieldArray[i][j].adjacentMinesCount;
+              processing.image(imgClicked[adjacentMinesCount], fieldSize*i+offsetX, fieldSize*j+offsetY, fieldSize, fieldSize);
+            }
+            else {
+              processing.image(imgFlaggued, fieldSize*i+offsetX, fieldSize*j+ offsetY, fieldSize, fieldSize);
+            }
+          }
         }
-        else {
-          processing.image(imgUnclicked, fieldSize*i+offsetX, fieldSize*j+offsetY, fieldSize, fieldSize);
+      break;
+      default:
+        for (var i=0; i<pgameSize; i++){
+          for (var j=0; j<pgameSize; j++){
+            if (fieldArray[i][j].isClicked){
+              var adjacentMinesCount = fieldArray[i][j].adjacentMinesCount;
+              processing.image(imgClicked[adjacentMinesCount], fieldSize*i+offsetX, fieldSize*j+offsetY, fieldSize, fieldSize);
+            }
+            else if (fieldArray[i][j].isFlaggued) {
+              processing.image(imgFlaggued, fieldSize*i+offsetX, fieldSize*j+ offsetY, fieldSize, fieldSize);
+            }
+            else {
+              processing.image(imgUnclicked, fieldSize*i+offsetX, fieldSize*j+offsetY, fieldSize, fieldSize);
+            }
+          }
         }
-      }
+      break;
     }
   }
 
   function iswon (){
     if (unclickedFieldCount - minesCount==0){
-      return true;
+      gameState="won";
     }
     else return false;
   }
@@ -176,13 +261,12 @@ function sketchProc(processing){
 
   function reveal (fieldArray, i, j){
     if ((!fieldArray[i][j].isFlaggued)&&(!fieldArray[i][j].isClicked)){
-      if (fieldArray[i][j].isMined){    
+      fieldArray[i][j].isClicked = true;
+      unclickedFieldCount --;
+      if (fieldArray[i][j].isMined){
         gameState = "lost";
-        console.log("perdu");
       }
       else {
-        fieldArray[i][j].isClicked = true;
-
         if (fieldArray[i][j].adjacentMinesCount == 0) {
           if(i>0 && j>0) {
             reveal(fieldArray, i-1, j-1);
@@ -207,7 +291,12 @@ function sketchProc(processing){
 
   //flag or unflag a field
   function switchFlag(fieldArray, i, j) {
-    //
+    if (fieldArray[i][j].isFlaggued){
+      remainingMines ++;
+    }
+    else if (remainingMines>0){
+      remainingMines --;
+    }
     fieldArray[i][j].isFlaggued = !fieldArray[i][j].isFlaggued;
   }
 
@@ -250,19 +339,23 @@ function sketchProc(processing){
   var c = 0;
 
   function timedCount() {
-    //if((pause==0)&&(state==1)) {c=c+1; chrono();} 
-    c=c+1; chrono();
+    switch (gameState) {
+      case "start":
+        c = 0;
+      break;
+      case "ingame":
+        c=c+1; 
+      break;
+    }
+    chrono(); 
     setTimeout(timedCount,100);
   }
 
-
-
-
   function chrono() {
     //incrémentation des dixièmes de 1
-    centi = c%10;
+    //centi = c%10;
     secon = ((c-c%10)/10)%60;
-    minu = (c-c%600)/600;
+   // minu = (c-c%600)/600;
        // $('#timer').html(secon);
     //if (centi>9){centi=0;secon++} //si les dixièmes > 9, on les réinitialise à 0 et on incrémente les secondes de 1
     //if (secon>59){secon=0;minu++} //si les secondes > 59, on les réinitialise à 0 et on incrémente les minutes de 1
