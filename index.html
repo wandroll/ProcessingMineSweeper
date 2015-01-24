@@ -2,6 +2,8 @@
 <head>
 <script src="bower_components/Processing.js/processing.js"></script>
 <script src="bower_components/underscore/underscore.js"></script>
+<script src="bower_components/jquery/dist/jquery.js"></script>
+<link rel="stylesheet" media="screen" href="http://openfontlibrary.org/face/segment7" rel="stylesheet" type="text/css"/>
 </head>
 <body onload="init();">
   <h1>Processing.js Minesweeper</a></h1>
@@ -11,8 +13,14 @@
   Converted to the JavaScript language from the Processing code<br/>
   <p>by Wandrille Verlut.</p>
 
+<div id="gamecontainer">
+  <div id="menucontainer">
+    <div id="timer"></div>
+    <div id="facebutton"></div>
+    <div id="minescount"></div>
+  <div>
   <canvas id="canvas1" width="200" height="200"></canvas>
-
+<div>
 <script id="script1" type="text/javascript">
 function init() {
   var canvas = document.getElementById("canvas1");
@@ -34,10 +42,16 @@ function sketchProc(processing){
   /*@pjs preload="img/clickedseven.jpeg";*/
   /*@pjs preload="img/clickedeight.jpeg";*/
   /*@pjs preload="img/flaggued.png";*/
+  /*@pjs preload="img/newgamebutton.png";*/
+  /*@pjs preload="img/frame2.png";*/
 
+  /* @pjs font=TickingTimebombBB.ttf */
 
-  imgFlaggued = processing.loadImage("img/flaggued.png");
-  imgUnclicked = processing.loadImage("img/unclicked.png");
+  var imgFlaggued = processing.loadImage("img/flaggued.png"),
+      imgUnclicked = processing.loadImage("img/unclicked.png"),
+      imgNewGameButton = processing.loadImage("img/newgamebutton.png"),
+      imgFrame = processing.loadImage("img/frame2.png");
+
   var imgClicked = new Array();
   imgClicked[0] = processing.loadImage("img/clickednone.png");
   imgClicked[1] = processing.loadImage("img/clickedone.png");
@@ -49,30 +63,46 @@ function sketchProc(processing){
   imgClicked[7] = processing.loadImage("img/clickedseven.jpeg");
   imgClicked[8] = processing.loadImage("img/clickedeight.jpeg");
 
-  var fieldSize = 35; // size is in pixels
-  var pgameSize = 10; //size of the board 
+  var offsetX= 18, 
+      offsetY = 79;
+  var frameSizeX = 513,
+      frameSizeY = 573;
+  var fieldSize = 30; // size is in pixels
+  var pgameSize = 16; //size of the board 
   var minesCount = 12;
+
   var gameState = "start"; // state variable can be : "start" or "ingame" or "lost" 
   var board = new boardGame(pgameSize);
 
+  var unclickedFieldCount = 0;
+  var remainingMines = 0;
+
   processing.setup = function() {
-    processing.size(500, 500); //dimension of the display window
-    processing.frameRate(15); 
+    processing.size(frameSizeX, frameSizeY); //dimension of the display window
+    processing.frameRate(10); 
     processing.noStroke();
     processing.smooth();
+    processing.fill(255);
+    fontA = processing.loadFont("TickingTimebombBB.ttf", 32);
+    processing.textFont(fontA, 30);
   }
 
   processing.draw = function() {
-    processing.background(124);
+    processing.background(200);
+    displayFrame();
     displayMineField(board);
+    displayTimer(30, 46);
+    displayMinesCount(450, 46);
   }
 
   /********* gestion des listeners ********/
   processing.mousePressed = function() {
-    var currI = Math.floor(processing.mouseX / fieldSize);
-    var currJ = Math.floor(processing.mouseY / fieldSize);
+    var currI = Math.floor((processing.mouseX -offsetX)/ fieldSize);
+    var currJ = Math.floor((processing.mouseY -offsetY)/ fieldSize);
     if (processing.mouseButton == 37) { //right click
-      if (gameState =="start") { 
+
+      if (gameState =="start") {
+        timedCount();
         board = new game(pgameSize, minesCount, currI, currJ);
         gameState ="ingame";
       }
@@ -83,28 +113,51 @@ function sketchProc(processing){
     }
   }
 
+  function displayTimer (posX, posY){
+    processing.text(secon, posX, posY);
+  }
+    function displayFrame (){
+    processing.image(imgFrame, 0, 0, frameSizeX, frameSizeY);
+  }
+
+  function displayMinesCount (posX, posY){
+    processing.text(remainingMines, posX, posY);
+  }
 
   function displayMineField(fieldArray){
     for (var i=0; i<pgameSize; i++){
       for (var j=0; j<pgameSize; j++){
         if (fieldArray[i][j].isClicked){
           var adjacentMinesCount = fieldArray[i][j].adjacentMinesCount;
-          processing.image(imgClicked[adjacentMinesCount], fieldSize*i, fieldSize*j, fieldSize, fieldSize);
+          processing.image(imgClicked[adjacentMinesCount], fieldSize*i+offsetX, fieldSize*j+offsetY, fieldSize, fieldSize);
         }
         else if (fieldArray[i][j].isFlaggued) {
-          processing.image(imgFlaggued, fieldSize*i, fieldSize*j, fieldSize, fieldSize);
+          processing.image(imgFlaggued, fieldSize*i+offsetX, fieldSize*j+ offsetY, fieldSize, fieldSize);
         }
         else {
-          processing.image(imgUnclicked, fieldSize*i, fieldSize*j, fieldSize, fieldSize);
+          processing.image(imgUnclicked, fieldSize*i+offsetX, fieldSize*j+offsetY, fieldSize, fieldSize);
         }
       }
     }
   }
 
+  function iswon (){
+    if (unclickedFieldCount - minesCount==0){
+      return true;
+    }
+    else return false;
+  }
+
+
 
   function game(gameSize, minesCount, startI, startJ){
+
+    // RESET
     var fieldArray = new boardGame(gameSize);      
     var minelist = new dispatchMines(gameSize, minesCount, startI, startJ);
+    var unclickedFieldCount = gameSize*gameSize;
+
+    //calculate adjacent mines indicator
     for (k=0; k<minesCount; k++){
       var x = minelist[k].x;
       var y = minelist[k].y;
@@ -129,6 +182,7 @@ function sketchProc(processing){
       }
       else {
         fieldArray[i][j].isClicked = true;
+
         if (fieldArray[i][j].adjacentMinesCount == 0) {
           if(i>0 && j>0) {
             reveal(fieldArray, i-1, j-1);
@@ -172,7 +226,7 @@ function sketchProc(processing){
 
   function field () {
     this.adjacentMinesCount = 0; 
-    this.isMined = false;//!!Math.floor(Math.random() * 2);
+    this.isMined = false;
     this.isClicked = false;
     this.isFlaggued = false;
   }
@@ -187,6 +241,36 @@ function sketchProc(processing){
     }
     return fieldArray;
   }
+
+  /********************************* gestion du timer *************************/
+
+  var centi = 0;
+  var minu = 0;
+  var secon = 0;
+  var c = 0;
+
+  function timedCount() {
+    //if((pause==0)&&(state==1)) {c=c+1; chrono();} 
+    c=c+1; chrono();
+    setTimeout(timedCount,100);
+  }
+
+
+
+
+  function chrono() {
+    //incrémentation des dixièmes de 1
+    centi = c%10;
+    secon = ((c-c%10)/10)%60;
+    minu = (c-c%600)/600;
+       // $('#timer').html(secon);
+    //if (centi>9){centi=0;secon++} //si les dixièmes > 9, on les réinitialise à 0 et on incrémente les secondes de 1
+    //if (secon>59){secon=0;minu++} //si les secondes > 59, on les réinitialise à 0 et on incrémente les minutes de 1
+    //$('#timer').html(minu +" : "+ secon +" : " +centi);
+  }
+
+
+
 }
 </script>
 </body>
