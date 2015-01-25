@@ -1,37 +1,16 @@
 <html>
 <head>
-<script src="bower_components/Processing.js/processing.js"></script>
-<script src="bower_components/underscore/underscore.js"></script>
-<script src="bower_components/jquery/dist/jquery.js"></script>
-<link rel="stylesheet" media="screen" href="http://openfontlibrary.org/face/segment7" rel="stylesheet" type="text/css"/>
+  <script src="lib/processing.min.js"></script>
+  <script src="lib/underscore-min.js"></script>
 </head>
 <body onload="init();">
-  <h1>Processing.js Minesweeper</a></h1>
-  <h2>Advanced processing.js via JavaScript</h2>
-  <p>a minesweeper built with processing</p>
-  <em>Note: runs via a web server or requres local files access in the web browser settings.</em>
-  Converted to the JavaScript language from the Processing code<br/>
-  <p>by Wandrille Verlut.</p>
-
-<div id="gamecontainer">
-  <div id="menucontainer">
-    <div id="timer"></div>
-    <div id="facebutton"></div>
-    <div id="minescount"></div>
-  <div>
   <canvas id="canvas1" width="200" height="200"></canvas>
-<div>
 <script id="script1" type="text/javascript">
-function init() {
-  var canvas = document.getElementById("canvas1");
-  script = document.getElementById("script1").text;
-  var p = new Processing(canvas, sketchProc); 
-}
+'use strict';
 
 function sketchProc(processing){
 
   // @pjs preload must be used to preload the image
-
   /*@pjs preload="img/flaggued.png";*/
   /*@pjs preload="img/flagguedunmined.png";*/
   /*@pjs preload="img/minedclicked.png";*/
@@ -56,15 +35,24 @@ function sketchProc(processing){
       imgFlaggueddUnmined = processing.loadImage("img/flagguedunmined.png"),
       imgMinedClicked = processing.loadImage("img/minedclicked.png"),
       imgMinedUnclicked = processing.loadImage("img/minedunclicked.png"),
-
       imgUnclicked = processing.loadImage("img/unclicked.png"),
       imgNewGameButton = processing.loadImage("img/newgamebutton.png"),
       imgGameLostButton = processing.loadImage("img/gamelostbutton.png"),
       imgGameWonButton = processing.loadImage("img/gamewonbutton.png"),
-
-      imgFrame = processing.loadImage("img/frame2.png");
-
-  var imgClicked = new Array();
+      imgFrame = processing.loadImage("img/frame2.png"),
+      imgClicked = [],
+      fontA = processing.loadFont("TickingTimebombBB.ttf", 32),
+      offsetX= 18, 
+      offsetY = 79,
+      frameSizeX = 513,
+      frameSizeY = 573,
+      fieldSize = 30, // size is in pixels
+      pgameSize = 16, //size of the board 
+      minesCount = 40,
+      remainingMines = minesCount,
+      gameState = "start", // state variable can be : "start" or "ingame" or "lost" 
+      board = new boardGame(pgameSize),
+      unclickedFieldCount = 0;
   imgClicked[0] = processing.loadImage("img/clickednone.png");
   imgClicked[1] = processing.loadImage("img/clickedone.png");
   imgClicked[2] = processing.loadImage("img/clickedtwo.png");
@@ -73,21 +61,7 @@ function sketchProc(processing){
   imgClicked[5] = processing.loadImage("img/clickedfive.png");
   imgClicked[6] = processing.loadImage("img/clickedsix.jpeg");
   imgClicked[7] = processing.loadImage("img/clickedseven.jpeg");
-  imgClicked[8] = processing.loadImage("img/clickedeight.jpeg");
-
-  var offsetX= 18, 
-      offsetY = 79;
-  var frameSizeX = 513,
-      frameSizeY = 573;
-  var fieldSize = 30; // size is in pixels
-  var pgameSize = 16; //size of the board 
-  var minesCount = 2;
-
-  var gameState = "start"; // state variable can be : "start" or "ingame" or "lost" 
-  var board = new boardGame(pgameSize);
-
-  var unclickedFieldCount = 0;
-  var remainingMines = minesCount;
+  imgClicked[8] = processing.loadImage("img/clickedeight.jpeg"); 
 
   processing.setup = function() {
     processing.size(frameSizeX, frameSizeY); //dimension of the display window
@@ -95,7 +69,6 @@ function sketchProc(processing){
     processing.noStroke();
     processing.smooth();
     processing.fill(255);
-    fontA = processing.loadFont("TickingTimebombBB.ttf", 32);
     processing.textFont(fontA, 30);
   }
 
@@ -116,9 +89,9 @@ function sketchProc(processing){
       gameState ="start";
       board = new game(pgameSize, minesCount, currI, currJ);
     }
-    else if ((mouseX<frameSizeX-offsetX)&&(mouseX>offsetX)&&(mouseY<frameSizeX-offsetY)&&(mouseY>offsetY)){
-      var currI = Math.floor((processing.mouseX -offsetX)/ fieldSize);
-      var currJ = Math.floor((processing.mouseY -offsetY)/ fieldSize);
+    else if ((mouseX<frameSizeX-offsetX)&&(mouseX>offsetX)&&(mouseY<frameSizeY-offsetX)&&(mouseY>offsetY)){
+      var currI = Math.floor((processing.mouseX -offsetX)/ fieldSize),
+          currJ = Math.floor((processing.mouseY -offsetY)/ fieldSize);
       
       if (processing.mouseButton == 37) { //right click
         if (gameState =="start") {
@@ -165,7 +138,7 @@ function sketchProc(processing){
       case "lost":
         for (var i=0; i<pgameSize; i++){
           for (var j=0; j<pgameSize; j++){
-            currentField = fieldArray[i][j];
+            var currentField = fieldArray[i][j];
             if (currentField.isClicked){
               if (currentField.isMined){ //cliqué et mine
                 processing.image(imgMinedClicked, fieldSize*i+offsetX, fieldSize*j+ offsetY, fieldSize, fieldSize);
@@ -227,25 +200,21 @@ function sketchProc(processing){
   }
 
   function iswon (){
-    if (unclickedFieldCount - minesCount==0){
-      gameState="won";
-    }
+    if (unclickedFieldCount == minesCount) gameState="won";
     else return false;
   }
-
-
 
   function game(gameSize, minesCount, startI, startJ){
 
     // RESET
-    var fieldArray = new boardGame(gameSize);      
-    var minelist = new dispatchMines(gameSize, minesCount, startI, startJ);
-    var unclickedFieldCount = gameSize*gameSize;
+    var fieldArray = new boardGame(gameSize),
+        minelist = new dispatchMines(gameSize, minesCount, startI, startJ),
+        unclickedFieldCount = gameSize*gameSize;
 
     //calculate adjacent mines indicator
-    for (k=0; k<minesCount; k++){
-      var x = minelist[k].x;
-      var y = minelist[k].y;
+    for (var k=0; k<minesCount; k++){
+      var x = minelist[k].x,
+          y = minelist[k].y;
       fieldArray[x][y].isMined = true;
       if(x>0 && y>0) fieldArray[x-1][y-1].adjacentMinesCount ++;
       if(x>0) fieldArray[x-1][y].adjacentMinesCount ++;
@@ -263,23 +232,13 @@ function sketchProc(processing){
     if ((!fieldArray[i][j].isFlaggued)&&(!fieldArray[i][j].isClicked)){
       fieldArray[i][j].isClicked = true;
       unclickedFieldCount --;
-      if (fieldArray[i][j].isMined){
-        gameState = "lost";
-      }
+      if (fieldArray[i][j].isMined) gameState = "lost";
       else {
         if (fieldArray[i][j].adjacentMinesCount == 0) {
-          if(i>0 && j>0) {
-            reveal(fieldArray, i-1, j-1);
-          }
-          if(i>0) {
-            reveal(fieldArray, i-1, j);
-          }
-          if((i>0) && (j<pgameSize-1)) {
-            reveal(fieldArray, i -1, j+1 );
-          }
-          if((i< pgameSize-1) && (j>0)) {
-            reveal(fieldArray, i+1, j-1);
-          }
+          if(i>0 && j>0) reveal(fieldArray, i-1, j-1);
+          if(i>0) reveal(fieldArray, i-1, j);
+          if((i>0) && (j<pgameSize-1)) reveal(fieldArray, i -1, j+1 );
+          if((i< pgameSize-1) && (j>0)) reveal(fieldArray, i+1, j-1);
           if(i<pgameSize-1) reveal(fieldArray, i+1, j);
           if((i<pgameSize-1) && (j<pgameSize-1)) reveal(fieldArray, i+1, j+1);
           if(j>0) reveal(fieldArray, i, j-1 );
@@ -291,12 +250,8 @@ function sketchProc(processing){
 
   //flag or unflag a field
   function switchFlag(fieldArray, i, j) {
-    if (fieldArray[i][j].isFlaggued){
-      remainingMines ++;
-    }
-    else if (remainingMines>0){
-      remainingMines --;
-    }
+    if      (fieldArray[i][j].isFlaggued){  remainingMines ++; }
+    else if (remainingMines>0){             remainingMines --; }
     fieldArray[i][j].isFlaggued = !fieldArray[i][j].isFlaggued;
   }
 
@@ -321,7 +276,7 @@ function sketchProc(processing){
   }
 
   function boardGame(gameSize){
-    var fieldArray = new Array();      
+    var fieldArray = new Array();
     for (var i=0; i<gameSize; i++){
       fieldArray[i] = new Array(); 
       for (var j=0; j<gameSize; j++){
@@ -333,10 +288,7 @@ function sketchProc(processing){
 
   /********************************* gestion du timer *************************/
 
-  var centi = 0;
-  var minu = 0;
-  var secon = 0;
-  var c = 0;
+  var secon = 0, c = 0;
 
   function timedCount() {
     switch (gameState) {
@@ -347,23 +299,14 @@ function sketchProc(processing){
         c=c+1; 
       break;
     }
-    chrono(); 
+    secon = ((c-c%10)/10)%60;
     setTimeout(timedCount,100);
   }
-
-  function chrono() {
-    //incrémentation des dixièmes de 1
-    //centi = c%10;
-    secon = ((c-c%10)/10)%60;
-   // minu = (c-c%600)/600;
-       // $('#timer').html(secon);
-    //if (centi>9){centi=0;secon++} //si les dixièmes > 9, on les réinitialise à 0 et on incrémente les secondes de 1
-    //if (secon>59){secon=0;minu++} //si les secondes > 59, on les réinitialise à 0 et on incrémente les minutes de 1
-    //$('#timer').html(minu +" : "+ secon +" : " +centi);
-  }
-
-
-
+}
+function init() {
+  var canvas = document.getElementById("canvas1"),
+      script = document.getElementById("script1").text,
+      p = new Processing(canvas, sketchProc);
 }
 </script>
 </body>
